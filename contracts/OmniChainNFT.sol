@@ -85,6 +85,7 @@ contract OmniChainNFT is Ownable, ERC721, ILayerZeroReceiver {
     uint256 MAX = 100;
     uint256 gas = 350000;
     ILayerZeroEndpoint public endpoint;
+    mapping(uint256 => bytes) public uaMap;
 
     event ReceiveNFT(
         uint16 _srcChainId,
@@ -101,6 +102,13 @@ contract OmniChainNFT is Ownable, ERC721, ILayerZeroReceiver {
         endpoint = ILayerZeroEndpoint(_endpoint);
         nextId = startId;
         MAX = _max;
+    }
+
+    function setUaAddress(uint256 _dstId, bytes calldata _uaAddress)
+        public
+        onlyOwner
+    {
+        uaMap[_dstId] = _uaAddress;
     }
 
     function mint() external payable {
@@ -155,6 +163,11 @@ contract OmniChainNFT is Ownable, ERC721, ILayerZeroReceiver {
         bytes memory _payload
     ) external override {
         require(msg.sender == address(endpoint));
+        require(
+            _from.length == uaMap[_srcChainId].length &&
+                keccak256(_from) == keccak256(uaMap[_srcChainId]),
+            "Call must send from valid user application"
+        );
         address from;
         assembly {
             from := mload(add(_from, 20))
